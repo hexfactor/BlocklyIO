@@ -1,0 +1,26 @@
+services:
+  blocklyio:
+    build: .
+    container_name: blocklyio
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8080
+      TICK_RATE: 60
+      ROOM_MAX_PLAYERS: 24
+      MAX_ROOMS: 32
+      STALE_TIMEOUT_MS: 10000
+      RATE_LIMIT_WINDOW_MS: 1000
+      RATE_LIMIT_EVENTS: 120
+      MAX_PAYLOAD_BYTES: 65536
+    ports:
+      - "8080:8080"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: blocklyio-cloudflared
+    restart: unless-stopped
+    depends_on:
+      - blocklyio
+    command: tunnel --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro

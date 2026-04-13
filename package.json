@@ -2,8 +2,10 @@
   "name": "blockly-io",
   "version": "0.9.0",
   "description": "An multiplayer-IO type game (cloned from Paper-IO)",
-  "main": "",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
+    "build": "browserify game-client.js -o public/bundle.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -27,5 +29,8 @@
     "serve-static": "^1.11.2",
     "socket.io": "^2.0.4",
     "socket.io-client": "^2.0.4"
+  },
+  "devDependencies": {
+    "browserify": "^17.0.0"
   }
 }
