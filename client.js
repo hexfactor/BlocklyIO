@@ -1,5 +1,6 @@
 var core = require('./game-core');
 var Player = core.Player;
+var protocol = require('./protocol');
 
 var io = require('socket.io-client');
 
@@ -9,6 +10,7 @@ var CELL_WIDTH = core.CELL_WIDTH;
 var running = false;
 var user, socket, frame;
 var players, allPlayers;
+var session = null;
 
 var kills;
 
@@ -61,7 +63,8 @@ if ( !requestAnimationFrame ) {
 }
 
 //Public API
-function connectGame(url, name, callback) {
+function connectGame(url, name, callback, options) {
+  options = options || {};
   if (running)
     return; //Prevent multiple runs.
   running = true;
@@ -72,15 +75,53 @@ function connectGame(url, name, callback) {
   //Socket connection.
   io.j = [];
   io.sockets = [];
-  socket = io(url, {
+  var socketOptions = {
     'forceNew': true,
     upgrade: false,
     transports: ['websocket']
-  });
+  };
+  if (options.path) {
+    socketOptions.path = options.path;
+  }
+  var socketUrl = url;
+  if (!socketUrl && hasWindow) {
+    socketUrl = window.location.origin;
+  }
+  socket = socketUrl ? io(socketUrl, socketOptions) : io(socketOptions);
   socket.on('connect', function(){
     console.info('Connected to server.');
+    socket.emit(protocol.EVENTS.HELLO, {
+      protocol: protocol.VERSION,
+      name: name,
+      type: 0,
+      gameid: -1,
+      roomId: options.roomId || (session && session.roomId),
+      reconnectToken: (session && session.reconnectToken) || options.reconnectToken
+    }, function(success, msg, handshake) {
+      if (success) {
+        console.info('Connected to game!');
+        if (handshake) {
+          session = {
+            protocol: handshake.protocol,
+            roomId: handshake.roomId,
+            reconnectToken: handshake.reconnectToken,
+            reconnectWindowMs: handshake.reconnectWindowMs
+          };
+        }
+      } else {
+        console.error('Unable to connect to game: ' + msg);
+        running = false;
+      }
+      if (callback)
+        callback(success, msg);
+    });
   });
   socket.on('game', function(data) {
+    if (!data || data.protocol !== protocol.VERSION) {
+      console.error('Protocol mismatch from server.');
+      socket.disconnect();
+      return;
+    }
     if (timeout != undefined)
       clearTimeout(timeout);
     
@@ -99,6 +140,16 @@ function connectGame(url, name, callback) {
     if (!user) 
       throw new Error();
     setUser(user);
+
+    if (data.session) {
+      session = {
+        protocol: data.protocol,
+        roomId: data.roomId,
+        reconnectToken: data.session.reconnectToken,
+        reconnectWindowMs: data.session.reconnectWindowMs
+      };
+      invokeRenderer('session', [session]);
+    }
     
     //Load grid.
     var gridData = new Uint8Array(data.grid);
@@ -140,22 +191,6 @@ function connectGame(url, name, callback) {
     running = false;
     invokeRenderer('disconnect', []);
   });
-  
-  socket.emit('hello', {
-    name: name,
-    type: 0, //Free-for-all
-    gameid: -1 //Requested game-id, or -1 for anyone.
-  }, function(success, msg) {
-    if (success) 
-      console.info('Connected to game!');
-    else {
-      console.error('Unable to connect to game: ' + msg);
-      running = false;
-    }
-    if (callback)
-      callback(success, msg);
-  });
-  
   
 }
 
@@ -214,6 +249,11 @@ function invokeRenderer(name, args) {
 
 function processFrame(data)
 {
+  if (!data || data.protocol !== protocol.VERSION) {
+    console.error('Protocol mismatch from server frame.');
+    socket.disconnect();
+    return;
+  }
   if (timeout != undefined)
       clearTimeout(timeout);
     
@@ -359,7 +399,11 @@ function update() {
 }
 
 //Export stuff
-var funcs = [connectGame, changeHeading, getOthers, getPlayers, getUser];
+function getSession() {
+  return session;
+}
+
+var funcs = [connectGame, changeHeading, getOthers, getPlayers, getUser, getSession];
 funcs.forEach(function (f) {
   exports[f.name] = f;
 });

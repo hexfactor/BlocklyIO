@@ -2,6 +2,7 @@
 var client = require("./client");
 var core = require("./game-core");
 var io = require('socket.io-client');
+var protocol = require("./protocol");
 
 var GRID_SIZE = core.GRID_SIZE;
 var CELL_WIDTH = core.CELL_WIDTH;
@@ -45,7 +46,17 @@ if ( !requestAnimationFrame ) {
 }
 
 function run() {
-  client.connectGame('//' + window.location.hostname + ':8081', $('#name').val(), function(success, msg) {
+  var cachedToken = null;
+  var cachedRoom = null;
+  try {
+    cachedToken = window.localStorage.getItem("blocklyio.reconnectToken");
+    cachedRoom = window.localStorage.getItem("blocklyio.roomId");
+  } catch (e) {
+    cachedToken = null;
+    cachedRoom = null;
+  }
+
+  client.connectGame('', $('#name').val(), function(success, msg) {
     if (success) 
     {
       $("#begin").addClass("hidden");
@@ -58,6 +69,9 @@ function run() {
       var error = $("#error");
       error.text(msg);
     }
+  }, {
+    reconnectToken: cachedToken || undefined,
+    roomId: cachedRoom || undefined
   });
 }
 
@@ -72,7 +86,7 @@ $(function() {
   
   error.text("Loading..."); //TODO: show loading screen.
   var success = false;
-  var socket = io('http://' + window.location.hostname + ':8081', {
+  var socket = io(window.location.origin, {
     'forceNew': true,
     upgrade: false,
     transports: ['websocket']
@@ -82,8 +96,10 @@ $(function() {
     if (!success)
       error.text("Cannot connect with server. This probably is due to misconfigured proxy server. (Try using a different browser)");
   });
-  socket.emit("checkConn", function() {
-    success = true;
+  socket.emit(protocol.EVENTS.CHECK_CONN, function(resp) {
+    if (resp && resp.ok && resp.protocol === protocol.VERSION) {
+      success = true;
+    }
     socket.disconnect();
   });
   setTimeout(function() {
@@ -102,6 +118,26 @@ $(function() {
     }
   }, 2000);
 });
+
+client.renderer = (function(oldRenderer) {
+  var renderer = oldRenderer || {};
+  var oldSession = renderer.session;
+  renderer.session = function(session) {
+    if (oldSession) {
+      oldSession(session);
+    }
+    if (!session) {
+      return;
+    }
+    try {
+      window.localStorage.setItem("blocklyio.reconnectToken", session.reconnectToken || "");
+      window.localStorage.setItem("blocklyio.roomId", session.roomId || "");
+    } catch (e) {
+      // no-op
+    }
+  };
+  return renderer;
+})(client.renderer);
 
 
 //Event listeners
