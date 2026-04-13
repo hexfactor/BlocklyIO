@@ -4,6 +4,7 @@ const path = require("path");
 const { once } = require("events");
 
 const ROOT = path.resolve(__dirname, "..", "..");
+const SOCKET_TIMEOUT_MS = 4000;
 
 function randomPort() {
   return 10000 + Math.floor(Math.random() * 10000);
@@ -88,6 +89,7 @@ async function stopServer(proc) {
 
 module.exports = {
   get,
+  SOCKET_TIMEOUT_MS,
   spawnServer,
   stopServer,
   waitForHealth

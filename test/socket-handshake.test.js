@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const io = require("socket.io-client");
 
 const protocol = require("../protocol");
-const { spawnServer, stopServer, waitForHealth } = require("./helpers/server-control");
+const { SOCKET_TIMEOUT_MS, spawnServer, stopServer, waitForHealth } = require("./helpers/server-control");
 
 let instance;
 
@@ -12,7 +12,7 @@ function connectClient(wsUrl, extraHeaders) {
     const timer = setTimeout(() => {
       socket.close();
       reject(new Error("Timed out connecting websocket client"));
-    }, 4000);
+    }, SOCKET_TIMEOUT_MS);
 
     const socket = io(wsUrl, {
       transports: ["websocket"],

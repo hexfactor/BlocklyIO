@@ -3,14 +3,14 @@ const assert = require("node:assert/strict");
 const io = require("socket.io-client");
 
 const protocol = require("../protocol");
-const { spawnServer, stopServer, waitForHealth } = require("./helpers/server-control");
+const { SOCKET_TIMEOUT_MS, spawnServer, stopServer, waitForHealth } = require("./helpers/server-control");
 
 function connectClient(wsUrl, extraHeaders) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       socket.close();
       reject(new Error("Timed out connecting websocket client"));
-    }, 4000);
+    }, SOCKET_TIMEOUT_MS);
 
     const socket = io(wsUrl, {
       transports: ["websocket"],
@@ -39,7 +39,7 @@ function connectClient(wsUrl, extraHeaders) {
 
 function emitAck(socket, event, payload) {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("Timed out waiting for ack: " + event)), 4000);
+    const timeout = setTimeout(() => reject(new Error("Timed out waiting for ack: " + event)), SOCKET_TIMEOUT_MS);
     socket.emit(event, payload, function() {
       clearTimeout(timeout);
       resolve(Array.prototype.slice.call(arguments));
