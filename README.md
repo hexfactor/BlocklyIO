@@ -11,7 +11,7 @@ Multiplayer Paper.IO-style game server/client using Socket.IO websocket transpor
 - Multi-room matchmaking and lifecycle cleanup.
 - Environment-driven runtime configuration.
 - Basic socket payload and per-connection event rate limits.
-- Docker + docker-compose + Cloudflare tunnel config.
+- Docker + docker-compose deployment support.
 
 ## Local development
 
@@ -51,20 +51,15 @@ Health endpoint:
 curl http://localhost:8080/healthz
 ```
 
-## Cloudflare tunnel (domain access)
+## Cloudflare / domain routing
 
-1. Create a Cloudflare tunnel and DNS route in Cloudflare.
-2. Put the tunnel credentials JSON file in `cloudflared/` and update `cloudflared/config.yml`:
-   - `tunnel`
-   - `credentials-file`
-   - `hostname`
-3. Start:
+Cloudflare is intentionally not built into the default compose stack. Run only BlocklyIO:
 
 ```bash
 docker compose up --build
 ```
 
-The game is then available through your configured hostname over HTTPS/WSS via Cloudflare.
+Then point your Cloudflare Tunnel, reverse proxy, or DNS/routing setup at the exposed BlocklyIO app port (`8080` by default). Because the client uses same-origin websocket connections, HTTPS pages through your domain will negotiate WSS correctly as long as your proxy forwards websocket upgrades to the app.
 
 ## Verification checklist
 

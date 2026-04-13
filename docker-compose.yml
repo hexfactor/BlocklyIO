@@ -14,13 +14,3 @@ services:
       MAX_PAYLOAD_BYTES: 65536
     ports:
       - "8080:8080"
-
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: blocklyio-cloudflared
-    restart: unless-stopped
-    depends_on:
-      - blocklyio
-    command: tunnel --config /etc/cloudflared/config.yml run
-    volumes:
-      - ./cloudflared:/etc/cloudflared:ro
