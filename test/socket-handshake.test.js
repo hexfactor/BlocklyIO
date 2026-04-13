@@ -9,15 +9,33 @@ let instance;
 
 function connectClient(wsUrl, extraHeaders) {
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.close();
+      reject(new Error("Timed out connecting websocket client"));
+    }, 4000);
+
     const socket = io(wsUrl, {
       transports: ["websocket"],
       forceNew: true,
       timeout: 3000,
+      reconnection: false,
       extraHeaders: extraHeaders || {}
     });
 
-    socket.once("connect", () => resolve(socket));
-    socket.once("connect_error", (err) => reject(err));
+    socket.once("connect", () => {
+      clearTimeout(timer);
+      resolve(socket);
+    });
+    socket.once("error", (err) => {
+      clearTimeout(timer);
+      socket.close();
+      reject(err);
+    });
+    socket.once("connect_error", (err) => {
+      clearTimeout(timer);
+      socket.close();
+      reject(err);
+    });
   });
 }
 

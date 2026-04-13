@@ -76,11 +76,13 @@ async function waitForHealth(port, timeoutMs = 5000) {
 
 async function stopServer(proc) {
   if (!proc || proc.exitCode !== null) return;
+  const softExit = once(proc, "exit");
   proc.kill("SIGTERM");
-  await Promise.race([once(proc, "exit"), new Promise((resolve) => setTimeout(resolve, 2000))]);
+  await Promise.race([softExit, new Promise((resolve) => setTimeout(resolve, 2000))]);
   if (proc.exitCode === null) {
+    const hardExit = once(proc, "exit");
     proc.kill("SIGKILL");
-    await once(proc, "exit");
+    await Promise.race([hardExit, new Promise((resolve) => setTimeout(resolve, 2000))]);
   }
 }
 
